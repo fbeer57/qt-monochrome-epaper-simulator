@@ -54,13 +54,13 @@ SOURCES       = ../src/main.cpp \
 		../src/ImageItem.cpp \
 		../src/StaticImage.c \
 		../src/epaper.c \
-		../src/StaticFont.c qrc_resources.cpp \
+		../src/EmbeddedFonts.c qrc_resources.cpp \
 		moc_ImageItem.cpp
 OBJECTS       = main.o \
 		ImageItem.o \
 		StaticImage.o \
 		epaper.o \
-		StaticFont.o \
+		EmbeddedFonts.o \
 		qrc_resources.o \
 		moc_ImageItem.o
 DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
@@ -269,7 +269,7 @@ DIST          = /usr/lib/qt/mkspecs/features/spec_pre.prf \
 		../src/ImageItem.cpp \
 		../src/StaticImage.c \
 		../src/epaper.c \
-		../src/StaticFont.c
+		../src/EmbeddedFonts.c
 QMAKE_TARGET  = qtsim
 DESTDIR       = 
 TARGET        = qtsim
@@ -717,7 +717,7 @@ distdir: FORCE
 	$(COPY_FILE) --parents ../resources.qrc $(DISTDIR)/
 	$(COPY_FILE) --parents /usr/lib/qt/mkspecs/features/data/dummy.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents ../src/ImageItem.h $(DISTDIR)/
-	$(COPY_FILE) --parents ../src/main.cpp ../src/ImageItem.cpp ../src/StaticImage.c ../src/epaper.c ../src/StaticFont.c $(DISTDIR)/
+	$(COPY_FILE) --parents ../src/main.cpp ../src/ImageItem.cpp ../src/StaticImage.c ../src/epaper.c ../src/EmbeddedFonts.c $(DISTDIR)/
 
 
 clean: compiler_clean 
@@ -782,6 +782,7 @@ main.o: ../src/main.cpp ../src/ImageItem.h
 
 ImageItem.o: ../src/ImageItem.cpp ../src/ImageItem.h \
 		../src/epaper.h \
+		../src/EmbeddedFonts.h \
 		../src/StaticImage.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ImageItem.o ../src/ImageItem.cpp
 
@@ -789,11 +790,12 @@ StaticImage.o: ../src/StaticImage.c ../src/StaticImage.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o StaticImage.o ../src/StaticImage.c
 
 epaper.o: ../src/epaper.c ../src/epaper.h \
+		../src/EmbeddedFonts.h \
 		../src/StaticImage.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o epaper.o ../src/epaper.c
 
-StaticFont.o: ../src/StaticFont.c ../src/StaticFont.h
-	$(CC) -c $(CFLAGS) $(INCPATH) -o StaticFont.o ../src/StaticFont.c
+EmbeddedFonts.o: ../src/EmbeddedFonts.c ../src/EmbeddedFonts.h
+	$(CC) -c $(CFLAGS) $(INCPATH) -o EmbeddedFonts.o ../src/EmbeddedFonts.c
 
 qrc_resources.o: qrc_resources.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o qrc_resources.o qrc_resources.cpp

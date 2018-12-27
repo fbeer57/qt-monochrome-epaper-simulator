@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "EmbeddedFonts.h"
+
 #define EPD_WIDTH  400
 #define EPD_HEIGHT 300
 #define EPD_BYTES_PER_ROW ((EPD_WIDTH+7)/8)
@@ -40,6 +42,7 @@ extern "C" {
     extern void draw_rect(int x0, int y0, int x1, int y1, int color);
     extern void draw_filled_rect(int x0, int y0, int x1, int y1, int color);
     extern void draw_text(const char* text, int x0, int y0, int color);
+    extern void draw_text2(const char* text, int x0, int y0, int color, const lv_font_t * font_p, int xoff, int yoff);
 
 #ifdef __cplusplus
 }

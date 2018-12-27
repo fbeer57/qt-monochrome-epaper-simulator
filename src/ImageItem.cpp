@@ -4,6 +4,7 @@
 #include <QBitmap>
 #include "epaper.h"
 #include "StaticImage.h"
+#include "EmbeddedFonts.h"
 
 ImageItem::ImageItem(QQuickItem *parent) : QQuickPaintedItem(parent)
 {    
@@ -85,7 +86,7 @@ void ImageItem::fonts()
 
     static int x0 = -15;
     static int y0 = rand() % EPD_HEIGHT;
-    draw_text("The quick brown fox", x0, y0, 0);
+    draw_text2("The quick brown fox ÄÖÜ", x0, y0, 0, &lv_font_dejavu_40, 1, 1);
     refresh();
     ++x0;
 }

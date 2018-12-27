@@ -18,9 +18,9 @@
 #include <math.h>
 #include "epaper.h"
 #include "StaticImage.h"
-#include "StaticFont.h"
 
 #define order(a, b) if (a > b) { int c = a; a = b; b = c; }
+#define set_bitmask(p, mask, color) if (color) { *p |= mask; } else { *p &= ~mask; } 
 
 uint8_t framebuffer[EPD_BYTES];
 
@@ -70,14 +70,7 @@ void set_pixel(int x, int y, int color)
 
     int pos = (y * EPD_WIDTH + x) / 8;
     uint8_t bitmask = 0x80 >> (x & 0x7);
-    if (color)
-    {
-        framebuffer[pos] |= bitmask;
-    }
-    else
-    {
-        framebuffer[pos] &= ~bitmask;
-    }
+    set_bitmask((framebuffer + pos), bitmask, color);
 }
 
 void clear(int color)
@@ -102,9 +95,8 @@ static void hLine(int x0, int x1, int y, int color)
     uint8_t* end = p + (x1 >> 3);
     p += (x0 >> 3);
 
-    int fillEnd = (x1 & 0x7);
     uint8_t startByte = 0xff >> (x0 & 0x7);
-    uint8_t endByte = ~(0xff >> fillEnd);
+    uint8_t endByte = ~(0xff >> (x1 & 0x7));
     
     if (startByte != 0xff)
     {
@@ -113,34 +105,19 @@ static void hLine(int x0, int x1, int y, int color)
             startByte &= endByte;
             endByte = 0x00;
         }
-        if (color)
-        {
-            *p |= startByte;            
-        }
-        else
-        {
-            *p &= ~startByte;            
-        }
+        set_bitmask(p, startByte, color);
         ++p;
     }
     
     uint8_t fill = (color)? 0xff : 0x00;
     while(p < end)
     {
-        *p = fill;
-        ++p;
+        *p++ = fill;
     }
 
-    if (fillEnd)
+    if (endByte)
     {
-        if (color)
-        {
-            *p |= endByte;            
-        }
-        else
-        {
-            *p &= ~endByte;            
-        }
+        set_bitmask(p, endByte, color);
     }
 }
 
@@ -153,21 +130,22 @@ static void vLine(int x, int y0, int y1, int color)
     uint8_t* p =   framebuffer + y0 * EPD_BYTES_PER_ROW + (x >> 3);
     uint8_t* end = framebuffer + y1 * EPD_BYTES_PER_ROW + (x >> 3);
     uint8_t fill = 0x80 >> (x & 0x7);
-    if (!color)
+    if (color)
+    {
+        while(p <= end)
+        {
+            *p |= fill; 
+            p += EPD_BYTES_PER_ROW;
+        }
+    }
+    else
     {
         fill = ~fill;
-    }
-    while(p <= end)
-    {
-        if (color)
+        while(p <= end)
         {
-            *p |= fill;
+            *p &= fill; 
+            p += EPD_BYTES_PER_ROW;
         }
-        else
-        {
-            *p &= fill;
-        }
-        p += EPD_BYTES_PER_ROW;
     }
 }
 
@@ -334,57 +312,43 @@ void draw_rect(int x0, int y0, int x1, int y1, int color)
     hLine(x0, x1, y1, color);
 }
 
-int draw_glyph(char ch, int x0, int y0, int color)
+int draw_glyph2(uint8_t ch, int x0, int y0, int color, const lv_font_t* font_p)
 {
-    const int fontWidth = 8;
-    const int fontHeight = 13;
+    int fontWidth = lv_font_get_width(font_p, ch);
+    if (fontWidth < 0)
+    {
+        return x0;
+    }
+    int fontHeight = font_p->h_px;
 
     if (x0 + fontWidth >= 0)
     {
         y0 = clip(y0, EPD_HEIGHT);
 
-        uint8_t* glyph = &StaticFont[ch - 32][0];
+        const uint8_t* glyph = lv_font_get_bitmap(font_p, ch);
         uint8_t* p = framebuffer + EPD_BYTES_PER_ROW*y0 + (x0 >> 3);
         int shift = 8 - (x0 & 0x7);
         for(int i = 0; i < fontHeight; ++i)
         {
-            int k = fontHeight - i - 1;
-            if (y0 + k >= EPD_HEIGHT) break;
+            if (y0 + i >= EPD_HEIGHT) break;
             
             uint8_t* dest = p + EPD_BYTES_PER_ROW*i;
             int stride = (fontWidth + 7) >> 3;
             int x = x0;
             for(int j = 0; j < stride; ++j)
             {
-                uint16_t bits = glyph[k*stride + j] << shift;
+                uint16_t bits = glyph[i*stride + j] << shift;
                 uint8_t hiByte = (bits >> 8) & 0xff;
-                x += 8;
-                if (x >= 0)
+                if (hiByte && x >= 0)
                 {
-                    if (color)
-                    {
-                        *dest++ |= hiByte;
-                    }
-                    else
-                    {
-                        *dest++ &= ~hiByte;
-                    }
-                    if (x < EPD_WIDTH)
-                    {
-                        uint8_t loByte = (bits & 0xff);
-                        if (color)
-                        {
-                            *dest   |= loByte;
-                        }
-                        else
-                        {
-                            *dest   &= ~loByte;
-                        }
-                    }
+                    set_bitmask(dest, hiByte, color);
                 }
-                else 
+                ++dest;
+                x += 8;
+                uint8_t loByte = (bits & 0xff);
+                if (loByte && x >= 0 && x < EPD_WIDTH)
                 {
-                    ++dest;
+                    set_bitmask(dest, loByte, color);
                 }
             }
         }
@@ -392,10 +356,10 @@ int draw_glyph(char ch, int x0, int y0, int color)
     return x0 + fontWidth;
 }
 
-void draw_text(const char* text, int x0, int y0, int color)
+void draw_text2(const char* text, int x0, int y0, int color, const lv_font_t * font_p, int xoff, int yoff)
 {
-    for(const char* pc = text; *pc && x0 < EPD_WIDTH; pc++)
+    for(const uint8_t* pc = (const uint8_t*)text; *pc && x0 < EPD_WIDTH; pc++)
     {
-        x0 = draw_glyph(*pc, x0, y0, color);
+        x0 = xoff + draw_glyph2(*pc, x0, y0, color, font_p);
     }
 }
